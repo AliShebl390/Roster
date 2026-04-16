@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Crew Roster Analyzer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:     #0A1628;
+      --gold:     #C8A95A;
+      --lgold:    #E8D5A3;
+      --sky:      #4A90D9;
+      --white:    #F8F9FF;
+      --danger:   #E53E3E;
+      --warning:  #DD6B20;
+      --success:  #2F855A;
+      --card:     #0F2040;
+      --border:   #1E3A5F;
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, var(--navy) 0%, #0D1F3C 50%, #091525 100%);
+      font-family: Georgia, 'Times New Roman', serif;
+      color: var(--white);
+    }
+
+    /* ---------- HEADER ---------- */
+    header {
+      background: linear-gradient(90deg, var(--navy) 0%, #0F2040 100%);
+      border-bottom: 2px solid var(--gold);
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .header-icon {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--gold), var(--lgold));
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+    }
+    .header-title { font-size: 22px; font-weight: bold; color: var(--gold); letter-spacing: 2px; }
+    .header-sub   { font-size: 12px; color: var(--sky); letter-spacing: 3px; text-transform: uppercase; margin-top: 2px; }
+    .header-rule  { margin-left: auto; text-align: right; flex-shrink: 0; }
+    .header-rule span { font-size: 11px; color: var(--lgold); opacity: 0.8; display: block; }
+    .header-rule strong { font-size: 20px; color: var(--gold); }
+
+    /* ---------- MAIN ---------- */
+    main { padding: 32px; max-width: 1000px; margin: 0 auto; }
+
+    /* ---------- CARD ---------- */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin-bottom: 24px;
+    }
+    .card-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      color: var(--gold);
+      font-weight: bold;
+      font-size: 14px;
+      letter-spacing: 2px;
+    }
+    .card-body { padding: 20px 24px; }
+
+    /* ---------- CREW INFO ---------- */
+    .crew-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+    label.field-label {
+      font-size: 10px; color: #8899AA; letter-spacing: 1px;
+      display: block; margin-bottom: 4px; text-transform: uppercase;
+    }
+
+    input[type="text"],
+    input[type="date"],
+    input[type="time"] {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--white);
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+      color-scheme: dark;
+    }
+    input:focus { border-color: var(--gold); }
+    input::placeholder { color: #445566; }
+
+    /* ---------- FLIGHT TABLE ---------- */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      padding: 10px 12px; text-align: left;
+      color: var(--lgold); font-size: 11px; letter-spacing: 1px; font-weight: normal;
+      border-bottom: 1px solid var(--border);
+      background: rgba(200,169,90,0.08);
+      white-space: nowrap;
+    }
+    td { padding: 8px 10px; border-bottom: 1px solid rgba(30,58,95,0.3); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+
+    .day-hint { font-size: 10px; color: var(--sky); margin-top: 3px; min-height: 14px; }
+
+    .btn-remove {
+      background: transparent; border: none;
+      color: var(--danger); font-size: 18px; cursor: pointer;
+      padding: 4px 8px; border-radius: 6px; line-height: 1;
+      transition: opacity 0.2s;
+    }
+    .btn-remove:disabled { color: #2a3a4a; cursor: default; }
+
+    /* ---------- ACTION BAR ---------- */
+    .action-bar {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+    }
+
+    .btn-add {
+      background: transparent; color: var(--sky);
+      border: 1px solid var(--sky); border-radius: 8px;
+      padding: 9px 20px; cursor: pointer; font-size: 13px; font-family: inherit;
+      transition: background 0.2s;
+    }
+    .btn-add:hover { background: rgba(74,144,217,0.1); }
+
+    .btn-calc {
+      background: linear-gradient(135deg, var(--gold), #A07840);
+      color: var(--navy); border: none; border-radius: 8px;
+      padding: 10px 28px; font-weight: bold; font-size: 14px;
+      cursor: pointer; letter-spacing: 1px; font-family: inherit;
+      transition: opacity 0.2s;
+    }
+    .btn-calc:hover { opacity: 0.9; }
+
+    .btn-clear {
+      background: transparent; color: #8899AA;
+      border: 1px solid rgba(136,153,170,0.3); border-radius: 8px;
+      padding: 9px 16px; cursor: pointer; font-size: 12px; font-family: inherit;
+    }
+
+    /* ---------- ERROR ---------- */
+    .error-box {
+      background: rgba(229,62,62,0.1); border: 1px solid var(--danger);
+      border-radius: 12px; padding: 16px 20px; margin-bottom: 24px;
+      color: #FC8181; font-size: 13px;
+    }
+
+    /* ---------- RESULTS ---------- */
+    #results { display: none; }
+
+    .summary-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;
+    }
+    .summary-card {
+      background: var(--card); border-radius: 12px; padding: 20px;
+      text-align: center;
+    }
+    .summary-card .icon  { font-size: 28px; margin-bottom: 4px; }
+    .summary-card .count { font-size: 32px; font-weight: bold; }
+    .summary-card .name  { font-size: 11px; color: var(--lgold); letter-spacing: 2px; margin-top: 2px; }
+    .summary-card .sub   { font-size: 11px; color: #8899AA; margin-top: 4px; }
+
+    .meta-bar {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px 24px; margin-bottom: 24px;
+      display: flex; gap: 32px; align-items: center; flex-wrap: wrap;
+    }
+    .meta-bar .meta-label { font-size: 11px; color: #8899AA; letter-spacing: 2px; }
+    .meta-bar .meta-value { color: var(--gold); font-weight: bold; }
+
+    /* Result table rows */
+    tr.violation { background: rgba(229,62,62,0.08); }
+    tr.warning   { background: rgba(221,107,32,0.08); }
+
+    .result-table td { padding: 10px 12px; white-space: nowrap; }
+
+    /* ---------- VIOLATION DETAIL ---------- */
+    .violation-section {
+      background: rgba(229,62,62,0.06);
+      border: 1px solid rgba(229,62,62,0.33);
+      border-radius: 12px; padding: 20px 24px; margin-bottom: 16px;
+    }
+    .violation-section h3 {
+      color: var(--danger); font-size: 14px; letter-spacing: 1px; margin-bottom: 12px;
+    }
+    .violation-item {
+      background: rgba(229,62,62,0.08); border-radius: 8px;
+      padding: 12px 16px; margin-bottom: 8px; font-size: 13px;
+    }
+
+    /* ---------- ALL CLEAR ---------- */
+    .all-clear {
+      background: rgba(47,133,90,0.1);
+      border: 1px solid rgba(47,133,90,0.33);
+      border-radius: 12px; padding: 20px 24px;
+      text-align: center; margin-bottom: 16px;
+    }
+    .all-clear .big-icon { font-size: 32px; margin-bottom: 8px; }
+    .all-clear p { color: var(--success); font-weight: bold; font-size: 16px; }
+
+    /* ---------- FOOTER ---------- */
+    footer {
+      text-align: center; margin-top: 32px;
+      color: #4A5568; font-size: 12px; padding-bottom: 32px;
+    }
+
+    /* ---------- SCROLLBAR ---------- */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--navy); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    @media (max-width: 600px) {
+      main { padding: 16px; }
+      .crew-grid { grid-template-columns: 1fr; }
+      .summary-grid { grid-template-columns: 1fr; }
+      header { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-icon">✈️</div>
+  <div>
+    <div class="header-title">CREW ROSTER ANALYZER</div>
+    <div class="header-sub">Manual Entry · Rest Period Calculator</div>
+  </div>
+  <div class="header-rule">
+    <span>Minimum Rest Rule</span>
+    <strong>14 Hours</strong>
+  </div>
+</header>
+
+<main>
+
+  <!-- Crew Info -->
+  <div class="card">
+    <div class="card-body">
+      <div class="crew-grid">
+        <div>
+          <label class="field-label" for="crewName">Crew Name</label>
+          <input type="text" id="crewName" placeholder="e.g. Ahmed Hassan" />
+        </div>
+        <div>
+          <label class="field-label" for="period">Roster Period</label>
+          <input type="text" id="period" placeholder="e.g. June 2025" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flight Entry -->
+  <div class="card">
+    <div class="card-header">✏️ ENTER FLIGHT SCHEDULE</div>
+    <div class="table-wrap">
+      <table id="flightTable">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Route</th>
+            <th>Dep Flight</th>
+            <th>STD</th>
+            <th>Arr Flight</th>
+            <th>STA</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="flightBody">
+          <!-- rows injected by JS -->
+        </tbody>
+      </table>
+    </div>
+    <div class="action-bar">
+      <button class="btn-add" onclick="addRow()">+ Add Flight</button>
+      <button class="btn-calc" onclick="calculate()">🔍 Calculate Rest Periods</button>
+      <button class="btn-clear" id="clearBtn" style="display:none" onclick="clearResults()">Clear Results</button>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-box" id="errorBox" style="display:none"></div>
+
+  <!-- Results -->
+  <div id="results">
+
+    <div class="summary-grid" id="summaryGrid"></div>
+
+    <div class="meta-bar" id="metaBar"></div>
+
+    <div class="card" id="resultTableCard">
+      <div class="card-header">📅 FLIGHT SCHEDULE &amp; REST ANALYSIS</div>
+      <div class="table-wrap">
+        <table class="result-table">
+          <thead>
+            <tr>
+              <th>Date</th><th>Day</th><th>Route</th>
+              <th>Dep Flight</th><th>STD</th>
+              <th>Arr Flight</th><th>STA</th>
+              <th>Rest Period</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="resultBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="violationSection"></div>
+    <div id="allClearSection"></div>
+
+  </div>
+
+  <footer>Based on 14-hour minimum rest rule between flights · For reference only</footer>
+</main>
+
+<script>
+  const MIN_REST = 14;
+  const DAYS = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  let rowId = 0;
+
+  function parseTime(str) {
+    if (!str) return null;
+    const clean = String(str).replace(/\D/g, '');
+    if (!clean) return null;
+    const norm = clean.length <= 2
+      ? clean.padStart(4, '0')
+      : clean.padStart(4, '0').slice(-4);
+    const h = parseInt(norm.slice(0, 2), 10);
+    const m = parseInt(norm.slice(2), 10);
+    if (isNaN(h) || isNaN(m) || h > 23 || m > 59) return null;
+    return h * 60 + m;
+  }
+
+  function minsToLabel(mins) {
+    if (mins === null || mins === undefined || isNaN(mins)) return '—';
+    if (mins < 0) mins += 1440;
+    return `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, '0')}m`;
+  }
+
+  function parseRosterDate(str) {
+    if (!str) return null;
+    const p = str.trim().split('-');
+    if (p.length !== 3) return null;
+    const dd = +p[0], mm = +p[1], yyyy = +p[2];
+    if (yyyy < 1900 || mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+    const d = new Date(Date.UTC(yyyy, mm - 1, dd));
+    if (d.getUTCFullYear() !== yyyy || d.getUTCMonth() !== mm - 1 || d.getUTCDate() !== dd) return null;
+    return d;
+  }
+
+  function isoToRoster(iso) {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}-${m}-${y}`;
+  }
+
+  function dayFromIso(iso) {
+    if (!iso) return '';
+    return DAYS[new Date(iso + 'T00:00:00Z').getUTCDay()];
+  }
+
+  function timeInputToHHMM(val) {
+    return val ? val.replace(':', '') : '';
+  }
+
+  function esc(str) {
+    return String(str || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function addRow() {
+    const id = ++rowId;
+    const tbody = document.getElementById('flightBody');
+    const tr = document.createElement('tr');
+    tr.id = `row-${id}`;
+    tr.innerHTML = `
+      <td>
+        <input type="date" id="date-${id}" oninput="updateDay(${id})" />
+        <div class="day-hint" id="day-${id}"></div>
+      </td>
+      <td><input type="text" id="route-${id}" placeholder="CAI ASW" style="min-width:90px" /></td>
+      <td><input type="text" id="depFlight-${id}" placeholder="MS 284" style="min-width:90px" /></td>
+      <td><input type="time" id="depTime-${id}" style="min-width:110px" /></td>
+      <td><input type="text" id="arrFlight-${id}" placeholder="MS 285" style="min-width:90px" /></td>
+      <td><input type="time" id="arrTime-${id}" style="min-width:110px" /></td>
+      <td style="text-align:center">
+        <button class="btn-remove" onclick="removeRow(${id})" title="Remove">✕</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+    refreshRemoveBtns();
+  }
+
+  function removeRow(id) {
+    const el = document.getElementById(`row-${id}`);
+    if (el) el.remove();
+    refreshRemoveBtns();
+  }
+
+  function refreshRemoveBtns() {
+    const btns = document.querySelectorAll('.btn-remove');
+    btns.forEach(b => b.disabled = btns.length === 1);
+  }
+
+  function updateDay(id) {
+    const iso = document.getElementById(`date-${id}`).value;
+    document.getElementById(`day-${id}`).textContent = dayFromIso(iso);
+  }
+
+  function getRows() {
+    const rows = document.querySelectorAll('#flightBody tr');
+    return Array.from(rows).map(tr => {
+      const id = tr.id.replace('row-', '');
+      return {
+        date:      document.getElementById(`date-${id}`)?.value || '',
+        route:     document.getElementById(`route-${id}`)?.value || '',
+        depFlight: document.getElementById(`depFlight-${id}`)?.value || '',
+        depTime:   document.getElementById(`depTime-${id}`)?.value || '',
+        arrFlight: document.getElementById(`arrFlight-${id}`)?.value || '',
+        arrTime:   document.getElementById(`arrTime-${id}`)?.value || '',
+      };
+    });
+  }
+
+  function calculateRest(rows) {
+    const flights = rows
+      .map(r => {
+        const rosterDate = isoToRoster(r.date);
+        const dateObj    = parseRosterDate(rosterDate);
+        const depMin     = parseTime(timeInputToHHMM(r.depTime));
+        return {
+          date:      rosterDate,
+          day:       dayFromIso(r.date),
+          route:     r.route.trim(),
+          depFlight: r.depFlight.trim(),
+          depTime:   timeInputToHHMM(r.depTime),
+          arrFlight: r.arrFlight.trim(),
+          arrTime:   timeInputToHHMM(r.arrTime),
+          hasDepart: Boolean(r.depFlight || r.depTime),
+          hasArrive: Boolean(r.arrFlight || r.arrTime),
+          _dateObj:  dateObj,
+          _depMin:   depMin,
+        };
+      })
+      .filter(f => f._dateObj && (f.hasDepart || f.hasArrive))
+      .sort((a, b) => {
+        const diff = a._dateObj.getTime() - b._dateObj.getTime();
+        if (diff !== 0) return diff;
+        return (a._depMin ?? Infinity) - (b._depMin ?? Infinity);
+      });
+
+    const analyzed = [];
+    for (const curr of flights) {
+      const prev = analyzed[analyzed.length - 1];
+      let rest = null, violation = false, warning = false;
+
+      if (prev?.hasArrive && prev.arrTime && curr.hasDepart && curr.depTime) {
+        const prevArr = parseTime(prev.arrTime);
+        const currDep = parseTime(curr.depTime);
+        if (prevArr !== null && currDep !== null) {
+          const dayDiff = Math.round((curr._dateObj - prev._dateObj) / 86400000);
+          const gap = currDep - prevArr + dayDiff * 1440;
+          if (gap >= 0) {
+            rest      = gap;
+            violation = gap / 60 < MIN_REST;
+            warning   = !violation && gap / 60 < MIN_REST + 2;
+          }
+        }
+      }
+      analyzed.push({ ...curr, rest, violation, warning });
+    }
+    return analyzed;
+  }
+
+  function calculate() {
+    clearError();
+    const rows = getRows();
+    const hasAny = rows.some(r => r.date && (r.depTime || r.arrTime));
+    if (!hasAny) {
+      showError('Please enter at least one flight with a date and a departure or arrival time.');
+      return;
+    }
+
+    const flights   = calculateRest(rows);
+    if (!flights.length) {
+      showError('No valid flights found. Make sure each row has a date and at least one time.');
+      return;
+    }
+
+    const crewName  = document.getElementById('crewName').value.trim() || 'Unknown';
+    const period    = document.getElementById('period').value.trim();
+    const violations = flights.filter(f => f.violation);
+    const warnings   = flights.filter(f => f.warning);
+    const safe       = flights.filter(f => f.rest !== null && !f.violation && !f.warning);
+
+    document.getElementById('summaryGrid').innerHTML = [
+      { label:'REST VIOLATIONS', count: violations.length, color:'var(--danger)', icon:'🚨', sub:'&lt; 14 hrs rest' },
+      { label:'BORDERLINE',      count: warnings.length,   color:'var(--warning)',icon:'⚠️', sub:'14–16 hrs rest' },
+      { label:'COMPLIANT',       count: safe.length,       color:'var(--success)',icon:'✅', sub:'&gt; 16 hrs rest' },
+    ].map(c => `
+      <div class="summary-card" style="border:1px solid ${c.color}44">
+        <div class="icon">${c.icon}</div>
+        <div class="count" style="color:${c.color}">${c.count}</div>
+        <div class="name">${c.label}</div>
+        <div class="sub">${c.sub}</div>
+      </div>`).join('');
+
+    document.getElementById('metaBar').innerHTML = `
+      <div><div class="meta-label">CREW NAME</div><div class="meta-value">${esc(crewName)}</div></div>
+      <div><div class="meta-label">ROSTER PERIOD</div><div class="meta-value">${esc(period) || '—'}</div></div>
+      <div><div class="meta-label">TOTAL FLIGHT DAYS</div><div class="meta-value">${flights.length}</div></div>
+    `;
+
+    document.getElementById('resultBody').innerHTML = flights.map(f => {
+      const cls = f.violation ? 'violation' : f.warning ? 'warning' : '';
+      const sc  = f.violation ? 'var(--danger)' : f.warning ? 'var(--warning)' : f.rest !== null ? 'var(--success)' : '#8899AA';
+      const st  = f.violation ? '🚨 VIOLATION' : f.warning ? '⚠️ BORDERLINE' : f.rest !== null ? '✅ OK' : '—';
+      return `<tr class="${cls}">
+        <td style="color:var(--white)">${esc(f.date)}</td>
+        <td style="color:#8899AA">${esc(f.day)}</td>
+        <td style="color:var(--sky);font-weight:bold">${esc(f.route)||'—'}</td>
+        <td style="color:var(--lgold)">${esc(f.depFlight)||'—'}</td>
+        <td style="color:var(--white)">${esc(f.depTime)||'—'}</td>
+        <td style="color:var(--lgold)">${esc(f.arrFlight)||'—'}</td>
+        <td style="color:var(--white)">${esc(f.arrTime)||'—'}</td>
+        <td style="color:${sc};font-weight:${f.rest!==null?'bold':'normal'}">${minsToLabel(f.rest)}</td>
+        <td style="color:${sc};font-size:12px;font-weight:bold">${st}</td>
+      </tr>`;
+    }).join('');
+
+    document.getElementById('violationSection').innerHTML = violations.length ? `
+      <div class="violation-section">
+        <h3>🚨 REST VIOLATIONS — ACTION REQUIRED</h3>
+        ${violations.map(f => `
+          <div class="violation-item">
+            <strong style="color:var(--danger)">${esc(f.date)} (${esc(f.day)})</strong>
+            <span style="color:#FC8181;margin-left:12px">
+              ${esc(f.route)} — Only ${minsToLabel(f.rest)} rest before this flight. Minimum required: 14h 00m.
+            </span>
+          </div>`).join('')}
+      </div>` : '';
+
+    document.getElementById('allClearSection').innerHTML =
+      (!violations.length && !warnings.length && flights.length) ? `
+        <div class="all-clear">
+          <div class="big-icon">🎉</div>
+          <p>All rest periods comply with the 14-hour rule!</p>
+        </div>` : '';
+
+    document.getElementById('results').style.display  = 'block';
+    document.getElementById('clearBtn').style.display = 'inline-block';
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function clearResults() {
+    document.getElementById('results').style.display  = 'none';
+    document.getElementById('clearBtn').style.display = 'none';
+    clearError();
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = '❌ ' + msg;
+    box.style.display = 'block';
+  }
+
+  function clearError() {
+    const box = document.getElementById('errorBox');
+    box.style.display = 'none';
+    box.textContent   = '';
+  }
+
+  addRow();
+</script>
+
+</body>
+</html>
